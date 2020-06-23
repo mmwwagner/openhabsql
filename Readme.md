@@ -6,7 +6,7 @@
 `apt install php-cli php-mysql git`
 ### download php script
 ```bash
-# git clone https://github.com/mmwwagner/openhabsql`
+# git clone https://github.com/mmwwagner/openhabsql
 # cd openhabsql
 ```
 ### create file openhabsql.config.php:
