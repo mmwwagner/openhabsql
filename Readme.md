@@ -43,6 +43,5 @@ Attention: removeUnusedEntries deletes tables without asking.
 
 ## Release Notes
 
-0.4 23.06.2020  ask before deleting in command removeUnusedEntries
-
-                optimized output in command removeUnusedEntries
+- 0.4 23.06.2020  ask before deleting in command removeUnusedEntries
+-                 optimized output in command removeUnusedEntries
