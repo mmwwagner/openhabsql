@@ -7,11 +7,15 @@ Installation
 ------------
 apt install php-cli php-mysql
 create file openhabsql.config.php:
+
 "<?php
 
   $database['username']='username';
+  
   $database['password']='password';
+  
   $database['host']='localhost';
+  
   $database['database']='openhab';
 
 ?>"
