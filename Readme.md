@@ -36,13 +36,14 @@
 
 ### Commands
 
-- listTables          : list of all tables with id and name
-- listLastEntries     : list of last entries of all items
-- listUnusedEntries   : list of unused entries of all items, needs option -t
-- removeUnusedEntries : removes unused tables, needs option -t
-- summarizeEntry      : summary all states of one item, needs option -i
-- summarizeEntries    : summary all states of all items
-
+```bash
+ listTables          : list of all tables with id and name
+ listLastEntries     : list of last entries of all items
+ listUnusedEntries   : list of unused entries of all items, needs option -t
+ removeUnusedEntries : removes unused tables, needs option -t
+ summarizeEntry      : summary all states of one item, needs option -i
+ summarizeEntries    : summary all states of all items
+```
 
 Attention: removeUnusedEntries deletes tables without asking. 
            Be careful and make a mysqldump in advance!
