@@ -19,8 +19,8 @@
 
 ### Options:
 
-* -h --help           : help
-* -d --debug          : debug, can be combined with any other options
+- -h --help           : help
+- -d --debug          : debug, can be combined with any other options
 
 -c --csv            : displays output in csv format
 
