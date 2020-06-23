@@ -24,14 +24,16 @@
 
 ### Options
 
-- -h --help           : help
-- -d --debug          : debug, can be combined with any other options
-- -c --csv            : displays output in csv format
-- -t <days>           : time since in days
-- -i <id>             : table id
-- -f <filter>         : filters item names like 'level%temp'
-- -s <column>         : sort table colums, 1=first col, -1=first col descending
-  
+```bash
+ -h --help           : help
+ -d --debug          : debug, can be combined with any other options
+ -c --csv            : displays output in csv format
+ -t <days>           : time since in days
+ -i <id>             : table id
+ -f <filter>         : filters item names like 'level%temp'
+ -s <column>         : sort table colums, 1=first col, -1=first col descending
+```
+
 ### Commands
 
 - listTables          : list of all tables with id and name
