@@ -1,10 +1,7 @@
+#  Openhab SQL 0.4
+#  (c) 23.06.2020 by Mario Wagner
 
-  Openhab SQL 0.4
-  ===============
-  (c) 23.06.2020 by Mario Wagner
-
-Installation
-------------
+##Installation
 apt install php-cli php-mysql
 create file openhabsql.config.php:
 
@@ -65,5 +62,7 @@ Attention: removeUnusedEntries deletes tables without asking.
 
 Release Notes
 -------------
+
 0.4 23.06.2020  ask before deleting in command removeUnusedEntries
+
                 optimized output in command removeUnusedEntries
