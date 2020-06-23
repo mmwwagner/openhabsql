@@ -1,7 +1,7 @@
 
-  Openhab SQL 0.3
+  Openhab SQL 0.4
   ===============
-  (c) 19.06.2020 by Mario Wagner
+  (c) 23.06.2020 by Mario Wagner
 
 Installation
 ------------
@@ -62,3 +62,8 @@ summarizeEntries    : summary all states of all items
 Attention: removeUnusedEntries deletes tables without asking. 
            Be careful and make a mysqldump in advance!
 
+
+Release Notes
+-------------
+0.4 23.06.2020  ask before deleting in command removeUnusedEntries
+                optimized output in command removeUnusedEntries

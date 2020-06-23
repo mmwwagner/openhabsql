@@ -1,15 +1,15 @@
 <?php
   /*********************************************************
-   * Openhab SQl 0.3
+   * Openhab SQl 0.4
    * 
    * Mario Wagner
-   * 19.06.2020
+   * 23.06.2020
    * 
    * Evaluation of stored values from Openhab2 in MySQL
    */
   include("openhabsql.config.php");
 
-  echo "\n  Openhab SQL 0.3\n  ===============\n  (c) 19.06.2020 by Mario Wagner\n\n";
+  echo "\n  Openhab SQL 0.4\n  ===============\n  (c) 23.06.2020 by Mario Wagner\n\n";
   
   $opts = "s:t:i:f:";
   $debug =false;
@@ -62,7 +62,7 @@
 
   if (array_search("listUnusedEntries",$argv)) {
     if ($days > 0) {
-      listUnusedEntries($database, $filter, $days, $sort, $debug);
+      listUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
     } else {
       echo "please define time in days with -t <days>\n\n";
       echo "Example: php openhabsql.php -t 5 listUnusedEntries\n\n";
@@ -71,7 +71,7 @@
 
   if (array_search("removeUnusedEntries",$argv)) {
     if ($days > 0) {
-      removeUnusedEntries($database, $filter, $days, $debug);
+      removeUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
     } else {
       echo "please define time in days with -t <days>\n\n";
       echo "Example: php openhabsql.php -t 5 removeUnusedEntries\n\n";
@@ -281,7 +281,7 @@ function summarizeEntries($database, $filter, $csv, $sort, $debug){
 
   }
 
-function listUnusedEntries($database, $filter, $days, $sort, $debug){
+function listUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
   $time=new DateTime('-'.$days.' day');
   echo "List Unused Entries $filter since ".$time->format('Y-m-d H:i:s')."\n";
   $db=connDB($database, $debug);
@@ -289,19 +289,37 @@ function listUnusedEntries($database, $filter, $days, $sort, $debug){
     echo "no tables with '$filter' found\n";
     exit;
   };
-  $mask = "|%5.5s |%-40.40s |%-40.40s |%-40.40s |\n";
-  printf($mask, "ID", "Name", "Date", "Value");
+  $header['titles']=array("ID", "Name", "Date", "Value");
+  $header['mask']=array("%6.6s ","%-40.40s ","%20.20s ","%20.20s ");
+  $content['mask']=array("%6.6s ","%-40.40s ","%20.20s ","%20.20s ");
+  $i=0;
   foreach ($tables as $id=>$name){
     $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $debug);
     foreach ($values[$id] as $date=>$value){
       if ($date<$time->format('Y-m-d H:i:s')){
-        printf($mask, $id, $name, $date,$value);
+        $content['data'][$id]=array( $id, $name, $date, $value);
+        $i++;
       }
     }
   }
+
+  if ($i>0){
+    if ($csv){
+      printCSV($header, $content);
+    } else {
+      printTable($header, $content, $sort);
+    }
+  } else {
+    echo "\n\nno records found!\n";
+  }
+  
 }
 
-function removeUnusedEntries($database, $filter, $days, $debug){
+function removeUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
+  listUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
+  $answer=readline("\nAre you sure? (y/n)");
+  if ($answer != "y"){exit;};
+  echo "\ndeleting...\n";
   $time=new DateTime('-'.$days.' day');
   echo "Remove Unused Entries $filter since ".$time->format('Y-m-d H:i:s')."\n";
   $db=connDB($database, $debug);
@@ -309,17 +327,17 @@ function removeUnusedEntries($database, $filter, $days, $debug){
     echo "no tables with '$filter' found\n";
     exit;
   };
-  $mask = "|%5.5s |%-40.40s |%-40.40s |%-40.40s |\n";
-  printf($mask, "ID", "Name", "Date", "Value");
+  $i=0;
   foreach ($tables as $id=>$name){
     $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $debug);
     foreach ($values[$id] as $date=>$value){
       if ($date<$time->format('Y-m-d H:i:s')){
-        printf($mask, $id, $name, $date,$value);
         removeTable($db, $id, $debug);
+        $i++;
       }
     }
   }
+  echo "\n $i entries deleted\n\n";
 }
 
 
@@ -392,17 +410,20 @@ function printCSV($header, $content){
 
 function printTable($header, $content, $sort=1){
   echo "\n";
+  printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
     printf("  ".$header['mask'][$key],"-------------------------------------------------------");
   }
   echo "\n";
   $i=0;
+  printf("  "."%7.7s","       |");
   foreach($header['titles'] as $key=>$title){
     $max[$i]=mmax($content['data'], $i);
     printf("| ".$header['mask'][$key],$title);
     $i++;
   }
   echo "|\n";
+  printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
     printf("| ".$header['mask'][$key],"-------------------------------------------------------");
   }
@@ -418,6 +439,7 @@ function printTable($header, $content, $sort=1){
   //print_r($content['data']);
   foreach($content['data'] as $id => $valArray){
     $i=0;
+    printf("  "."%7.7s","       |");
     foreach($valArray as $value){
       if (is_numeric($value)){
         if ($max[$i] > 1000){
@@ -433,11 +455,13 @@ function printTable($header, $content, $sort=1){
     }
     echo "|\n";
   }
+  printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
     printf("| ".$header['mask'][$key],"-------------------------------------------------------");
   }
   echo "|\n";
   $i=0;
+  printf("  "."%7.7s","  MAX ");
   foreach($max as $key=>$value){
     if (is_numeric($value)){
       if ($max[$i] > 1000){
@@ -452,6 +476,7 @@ function printTable($header, $content, $sort=1){
     $i++;
   }
   echo "|\n";
+  printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
     printf("  ".$header['mask'][$key],"-------------------------------------------------------");
   }
