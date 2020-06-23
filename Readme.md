@@ -1,11 +1,11 @@
 #  Openhab SQL 0.4
-#  (c) 23.06.2020 by Mario Wagner
+  (c) 23.06.2020 by Mario Wagner
 
-##Installation
-apt install php-cli php-mysql
+## Installation
+install php modules:
+`apt install php-cli php-mysql`
 create file openhabsql.config.php:
-
-"<?php
+`<?php
 
   $database['username']='username';
   
@@ -15,7 +15,7 @@ create file openhabsql.config.php:
   
   $database['database']='openhab';
 
-?>"
+?>`
 
 
 Help
