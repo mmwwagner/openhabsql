@@ -2,32 +2,25 @@
   (c) 23.06.2020 by Mario Wagner
 
 ## Installation
-install php modules:
+### install php modules:
 `apt install php-cli php-mysql`
-create file openhabsql.config.php:
-`<?php
-
+### create file openhabsql.config.php:
+```php
+<?php
   $database['username']='username';
-  
   $database['password']='password';
-  
   $database['host']='localhost';
-  
   $database['database']='openhab';
+?>
+```
+## Help
 
-?>`
+`php openhabsql.php [options] [command]`
 
+### Options:
 
-Help
-----
-
-php openhabsql.php [options] [command]
-
-Options:
-
--h --help           : help
-
--d --debug          : debug, can be combined with any other options
+* -h --help           : help
+* -d --debug          : debug, can be combined with any other options
 
 -c --csv            : displays output in csv format
 
