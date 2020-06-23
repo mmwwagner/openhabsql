@@ -5,9 +5,10 @@
 ### install php modules:
 `apt install php-cli php-mysql git`
 ### download php script
-`git clone https://github.com/mmwwagner/openhabsql`
-
-`cd openhabphp`
+```bash
+# git clone https://github.com/mmwwagner/openhabsql`
+# cd openhabsql
+```
 ### create file openhabsql.config.php:
 ```php
 <?php
