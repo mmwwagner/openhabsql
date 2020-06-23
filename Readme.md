@@ -1,9 +1,9 @@
-#  Openhab SQL 0.4
+#  Openhab SQL 0.5
   (c) 23.06.2020 by Mario Wagner
 
 ## Installation
 ### install php modules:
-`apt install php-cli php-mysql git`
+`# apt install php-cli php-mysql git`
 ### download php script
 ```bash
 # git clone https://github.com/mmwwagner/openhabsql
@@ -20,7 +20,7 @@
 ```
 ## Help
 
-`php openhabsql.php [options] [command]`
+`# php openhabsql.php [options] [command]`
 
 ### Options
 
@@ -50,6 +50,10 @@ Attention: removeUnusedEntries deletes tables without asking.
 
 
 ## Release Notes
+
+### V0.5 23.06.2020
+- printout of min values
+- summarizeEntry and summarizeEntries can be reduced to the last number of days (-t)
 
 ### V0.4 23.06.2020
 - ask before deleting in command removeUnusedEntries

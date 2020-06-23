@@ -1,6 +1,6 @@
 <?php
   /*********************************************************
-   * Openhab SQl 0.4
+   * Openhab SQl 0.5
    * 
    * Mario Wagner
    * 23.06.2020
@@ -9,7 +9,7 @@
    */
   include("openhabsql.config.php");
 
-  echo "\n  Openhab SQL 0.4\n  ===============\n  (c) 23.06.2020 by Mario Wagner\n\n";
+  echo "\n  Openhab SQL 0.5\n  ===============\n  (c) 23.06.2020 by Mario Wagner\n\n";
   
   $opts = "s:t:i:f:";
   $debug =false;
@@ -80,7 +80,7 @@
 
   if (array_search("summarizeEntry",$argv)) {
     if ($id > 0) {
-      summarizeEntry($database, $id, $csv, $sort, $debug);
+      summarizeEntry($database, $id, $csv, $sort, $days, $debug);
     } else {
       echo "please define id with -i <id>\n\n";
       echo "Example: php openhabsql.php -i 123 summarizeEntry\n\n";
@@ -88,7 +88,7 @@
   }
 
   if (array_search("summarizeEntries",$argv)) {
-    summarizeEntries($database, $filter, $csv, $sort, $debug);
+    summarizeEntries($database, $filter, $csv, $sort, $days, $debug);
   }
 
  
@@ -137,10 +137,12 @@ function listTables($database, $filter, $csv, $sort, $debug){
   }
 }
 
-function summarizeEntry($database, $id, $csv, $sort, $debug){
+function summarizeEntry($database, $id, $csv, $sort, $days, $debug){
   $sum=array();
   $lastValue="";
-  echo "Summaries Entries of $id\n";
+  echo "Summaries Entries of $id";
+  if ($days>0) {echo " for the last $days days";};
+  echo "\n\n";
   $db=connDB($database, "", $debug);
   $tables=getTables($db, "%", $debug);
   if (!array_key_exists($id, $tables)){
@@ -148,9 +150,8 @@ function summarizeEntry($database, $id, $csv, $sort, $debug){
     exit;
   }
   echo "ID: $id, Name: ".$tables[$id]."\n";
-  $values[$id]=getValues($db, "Item".$id, "order by Time", $debug);
+  $values[$id]=getValues($db, "Item".$id, "order by Time", $days, $debug);
   foreach ($values[$id] as $date=>$value){
-    //printf($mask, $id, $date, $value);
     if (array_key_exists($lastValue, $sum)) {
       if ($debug) {echo "*summarizeEntry::key exists value=$lastValue\n";};
       $sum[$lastValue]['count']++;
@@ -206,16 +207,18 @@ function listLastEntries($database, $filter, $sort, $debug){
   }
 }
 
-function summarizeEntries($database, $filter, $csv, $sort, $debug){
+function summarizeEntries($database, $filter, $csv, $sort, $days, $debug){
   $sum=array();
-  echo "Summaries Entries $filter\n";
+  echo "Summaries Entries $filter";
+  if ($days>0) {echo " for the last $days days";};
+  echo "\n\n";
   $db=connDB($database, $debug);
   if(!$tables=getTables($db, $filter, $debug)){
     echo "no tables with '$filter' found\n";
     exit;
   };
   foreach($tables as $id=>$Name){
-    $values[$id]=getValues($db, "Item".$id, "order by Time", $debug);
+    $values[$id]=getValues($db, "Item".$id, "order by Time", $days, $debug);
     $sum[$id]=array();
     $lastValue="";
     foreach ($values[$id] as $date=>$value){
@@ -371,9 +374,15 @@ function getTables($db, $filter, $debug){
   }
 }
 
-function getValues($db, $table, $dbopts, $debug){
-  $query = "SELECT * from $table $dbopts";
-  if ($debug) { echo "*getValues:: get values $table $dbopts .. "; }
+function getValues($db, $table, $dbopts, $days, $debug){
+  $query = "SELECT * from $table";
+  if ($days>0) {
+    $time=new DateTime('-'.$days.' day');
+    $query = $query." WHERE Time>'".$time->format("Y-m-d H:i:s")."'";
+    if ($debug) { echo "*getValues:: sql $query .. \n"; }   
+  }
+  $query=$query." $dbopts";
+  if ($debug) { echo "*getValues:: get values $table $dbopts .. \n"; }
   if ($result = mysqli_query($db, $query)) {
     while($row = mysqli_fetch_array($result)){
       $values[$row['Time']]=$row['Value'];
@@ -409,6 +418,7 @@ function printCSV($header, $content){
 
 
 function printTable($header, $content, $sort=1){
+  // print table headers
   echo "\n";
   printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
@@ -419,6 +429,7 @@ function printTable($header, $content, $sort=1){
   printf("  "."%7.7s","       |");
   foreach($header['titles'] as $key=>$title){
     $max[$i]=mmax($content['data'], $i);
+    $min[$i]=mmin($content['data'], $i);
     printf("| ".$header['mask'][$key],$title);
     $i++;
   }
@@ -436,8 +447,8 @@ function printTable($header, $content, $sort=1){
     array_multisort($cols, SORT_DESC, $content['data']);   
   }
 
-  //print_r($content['data']);
-  foreach($content['data'] as $id => $valArray){
+ // print table data
+ foreach($content['data'] as $id => $valArray){
     $i=0;
     printf("  "."%7.7s","       |");
     foreach($valArray as $value){
@@ -460,6 +471,26 @@ function printTable($header, $content, $sort=1){
     printf("| ".$header['mask'][$key],"-------------------------------------------------------");
   }
   echo "|\n";
+
+  // print min
+  $i=0;
+  printf("  "."%7.7s","  MIN ");
+  foreach($min as $key=>$value){
+    if (is_numeric($value)){
+      if ($min[$i] > 1000){
+        $value=number_format($value,0,".","'");
+      } elseif (is_integer($value)) {
+        $value=number_format($value,0,".","'");
+      } else {
+        $value=number_format($value,6,".","'");
+      }
+    }
+    printf("| ".$content['mask'][$i], $value);
+    $i++;
+  }
+  echo "|\n";
+ 
+  // print max
   $i=0;
   printf("  "."%7.7s","  MAX ");
   foreach($max as $key=>$value){
@@ -477,6 +508,7 @@ function printTable($header, $content, $sort=1){
   }
   echo "|\n";
   printf("  "."%7.7s","------");
+
   foreach($header['titles'] as $key=>$title){
     printf("  ".$header['mask'][$key],"-------------------------------------------------------");
   }
@@ -489,4 +521,12 @@ function mmax($array, $index){
   }
   return max($tmp);
 }
+
+function mmin($array, $index){
+  foreach($array as $key=>$entry){
+    $tmp[$key]=$entry[$index];
+  }
+  return min($tmp);
+}
+
 ?>
