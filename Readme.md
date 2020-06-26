@@ -1,5 +1,5 @@
 #  Openhab SQL 0.5
-  (c) 23.06.2020 by Mario Wagner
+  (c) 26.06.2020 by Mario Wagner
 
 ## Installation
 ### install php modules:
@@ -39,22 +39,22 @@
 ```bash
  listTables          : list of all tables with id and name
  listLastEntries     : list of last entries of all items
- listUnusedEntries   : list of unused entries of all items, needs option -t
- removeUnusedEntries : removes unused tables, needs option -t
+ listUnusedTables    : list of unused entries of all items, needs option -t
+ deleteUnusedTables  : removes unused tables, needs option -t
  summarizeEntry      : summary all states of one item, needs option -i
  summarizeEntries    : summary all states of all items
 ```
 
-Attention: removeUnusedEntries deletes tables without asking. 
+Attention: deleteUnusedTables deletes tables without asking. 
            Be careful and make a mysqldump in advance!
 
 
 ## Release Notes
 
-### V0.5 23.06.2020
+### V0.5 25.06.2020
 - printout of min values
 - summarizeEntry and summarizeEntries can be reduced to the last number of days (-t)
 
 ### V0.4 23.06.2020
-- ask before deleting in command removeUnusedEntries
-- optimized output in command removeUnusedEntries
+- ask before deleting in command deleteUnusedTables
+- optimized output in command deleteUnusedTables

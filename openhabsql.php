@@ -3,13 +3,13 @@
    * Openhab SQl 0.5
    * 
    * Mario Wagner
-   * 23.06.2020
+   * 26.06.2020
    * 
    * Evaluation of stored values from Openhab2 in MySQL
    */
   include("openhabsql.config.php");
 
-  echo "\n  Openhab SQL 0.5\n  ===============\n  (c) 23.06.2020 by Mario Wagner\n\n";
+  echo "\n  Openhab SQL 0.5\n  ===============\n  (c) 26.06.2020 by Mario Wagner\n\n";
   
   $opts = "s:t:i:f:";
   $debug =false;
@@ -57,24 +57,24 @@
   }
   
   if (array_search("listLastEntries",$argv)) {
-    listLastEntries($database, $filter, $sort,  $debug);
+    listLastEntries($database, $filter, $sort, $days,  $debug);
   }
 
-  if (array_search("listUnusedEntries",$argv)) {
+  if (array_search("listUnusedTables",$argv)) {
     if ($days > 0) {
-      listUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
+      listUnusedTables($database, $filter, $days, $csv, $sort, $debug);
     } else {
       echo "please define time in days with -t <days>\n\n";
-      echo "Example: php openhabsql.php -t 5 listUnusedEntries\n\n";
+      echo "Example: php openhabsql.php -t 5 listUnusedTables\n\n";
     }
   }
 
-  if (array_search("removeUnusedEntries",$argv)) {
+  if (array_search("deleteUnusedTables",$argv)) {
     if ($days > 0) {
-      removeUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
+      deleteUnusedTables($database, $filter, $days, $csv, $sort, $debug);
     } else {
       echo "please define time in days with -t <days>\n\n";
-      echo "Example: php openhabsql.php -t 5 removeUnusedEntries\n\n";
+      echo "Example: php openhabsql.php -t 5 deleteUnusedTables\n\n";
     }
   }
 
@@ -107,12 +107,12 @@ function printHelp(){
   echo "Commands:\n";
   echo "listTables          : list of all tables with id and name\n";
   echo "listLastEntries     : list of last entries of all items\n";
-  echo "listUnusedEntries   : list of unused entries of all items, needs option -t\n";
-  echo "removeUnusedEntries : removes unused tables, needs option -t\n";
+  echo "listUnusedTables    : list of unused entries of all items, needs option -t\n";
+  echo "deleteUnusedTables  : removes unused tables, needs option -t\n";
   echo "summarizeEntry      : summary all states of one item, needs option -i\n";
   echo "summarizeEntries    : summary all states of all items\n";
   echo "\n";
-  echo "Attention: removeUnusedEntries deletes tables without asking. \n";
+  echo "Attention: deleteUnusedTables deletes tables without asking. \n";
   echo "           Be careful and make a mysqldump in advance!\n";
   echo "\n";
 }
@@ -178,11 +178,9 @@ function summarizeEntry($database, $id, $csv, $sort, $days, $debug){
   } else {
     printTable($header, $content, $sort);
   }
-
 }
 
-
-function listLastEntries($database, $filter, $sort, $debug){
+function listLastEntries($database, $filter, $sort, $days, $debug){
   echo "List Last Entries $filter\n";
   $db=connDB($database, $debug);
   if(!$tables=getTables($db, $filter, $debug)){
@@ -194,7 +192,7 @@ function listLastEntries($database, $filter, $sort, $debug){
   $content['mask']=array("%5.5s ","%-20.20s ","%-20.20s ","%10.8s ");
 
   foreach ($tables as $id=>$name){
-    $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $debug);
+    $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $days, $debug);
     foreach ($values[$id] as $date=>$value){
       $content['data'][$id]=array($id, $name, $date, $value);
     }
@@ -272,7 +270,11 @@ function summarizeEntries($database, $filter, $csv, $sort, $days, $debug){
     $content2['mask']=array("%6.6s ","%-20.20s ","%12.12s ","%15.15s ","%10.10s ","%10.10s ","%10.10s ");
 
     foreach($tot as $id=>$name) {
-      $avg=$tot[$id]['prod']/$tot[$id]['time'];
+      if ($tot[$id]['time']>0){
+        $avg=$tot[$id]['prod']/$tot[$id]['time'];
+      } else {
+        $avg="n/a";
+      }
       $content2['data'][$id]=array($id, $tables[$id], $tot[$id]['prod'], $tot[$id]['time'], $tot[$id]['max'], $tot[$id]['min'],$avg);
     }
 
@@ -284,7 +286,7 @@ function summarizeEntries($database, $filter, $csv, $sort, $days, $debug){
 
   }
 
-function listUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
+function listUnusedTables($database, $filter, $days, $csv, $sort, $debug){
   $time=new DateTime('-'.$days.' day');
   echo "List Unused Entries $filter since ".$time->format('Y-m-d H:i:s')."\n";
   $db=connDB($database, $debug);
@@ -297,12 +299,16 @@ function listUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
   $content['mask']=array("%6.6s ","%-40.40s ","%20.20s ","%20.20s ");
   $i=0;
   foreach ($tables as $id=>$name){
-    $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $debug);
-    foreach ($values[$id] as $date=>$value){
-      if ($date<$time->format('Y-m-d H:i:s')){
-        $content['data'][$id]=array( $id, $name, $date, $value);
-        $i++;
+    if ($values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", 0, $debug)){
+      foreach ($values[$id] as $date=>$value){
+        if ($date<$time->format('Y-m-d H:i:s')){
+          $content['data'][$id]=array( $id, $name, $date, $value);
+          $i++;
+        }
       }
+    } else {
+      echo "no data with '$filter' found\n";
+      exit;
     }
   }
 
@@ -318,13 +324,13 @@ function listUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
   
 }
 
-function removeUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
-  listUnusedEntries($database, $filter, $days, $csv, $sort, $debug);
+function deleteUnusedTables($database, $filter, $days, $csv, $sort, $debug){
+  listUnusedTables($database, $filter, $days, $csv, $sort, $debug);
   $answer=readline("\nAre you sure? (y/n)");
   if ($answer != "y"){exit;};
   echo "\ndeleting...\n";
   $time=new DateTime('-'.$days.' day');
-  echo "Remove Unused Entries $filter since ".$time->format('Y-m-d H:i:s')."\n";
+  echo "Remove Unused Tables $filter since ".$time->format('Y-m-d H:i:s')."\n";
   $db=connDB($database, $debug);
   if(!$tables=getTables($db, $filter, $debug)){
     echo "no tables with '$filter' found\n";
@@ -332,7 +338,7 @@ function removeUnusedEntries($database, $filter, $days, $csv, $sort, $debug){
   };
   $i=0;
   foreach ($tables as $id=>$name){
-    $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", $debug);
+    $values[$id]=getValues($db, "Item".$id, "order by Time desc limit 1", 0, $debug);
     foreach ($values[$id] as $date=>$value){
       if ($date<$time->format('Y-m-d H:i:s')){
         removeTable($db, $id, $debug);
@@ -375,22 +381,24 @@ function getTables($db, $filter, $debug){
 }
 
 function getValues($db, $table, $dbopts, $days, $debug){
+  $values=Array();
   $query = "SELECT * from $table";
   if ($days>0) {
     $time=new DateTime('-'.$days.' day');
     $query = $query." WHERE Time>'".$time->format("Y-m-d H:i:s")."'";
-    if ($debug) { echo "*getValues:: sql $query .. \n"; }   
   }
   $query=$query." $dbopts";
-  if ($debug) { echo "*getValues:: get values $table $dbopts .. \n"; }
+  if ($debug) { echo "*getValues:: get values $query .. \n"; }
   if ($result = mysqli_query($db, $query)) {
     while($row = mysqli_fetch_array($result)){
       $values[$row['Time']]=$row['Value'];
+      if ($debug) { echo " - ".$row['Time'].":".$row['Value']."\n"; };
     }
-    if ($debug) { echo "ok\n"; };
+    if ($debug) { " ok\n"; };
     return $values;
   }
   else {
+    if ($debug) {echo "*getValues:: no data found";};
     return null;
   }
 }
