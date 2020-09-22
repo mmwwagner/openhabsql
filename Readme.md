@@ -1,5 +1,5 @@
-#  Openhab SQL 0.5
-  (c) 26.06.2020 by Mario Wagner
+#  Openhab SQL 0.6
+  (c) 22.09.2020 by Mario Wagner
 
 ## Installation
 ### install php modules:
@@ -32,6 +32,8 @@
  -i <id>             : table id
  -f <filter>         : filters item names like 'level%temp'
  -s <column>         : sort table colums, 1=first col, -1=first col descending
+ -v <value>          : value we are searching for
+ -o <operator>       : 'lt', 'gt', 'eq'
 ```
 
 ### Commands
@@ -43,6 +45,9 @@
  deleteUnusedTables  : removes unused tables, needs option -t
  summarizeEntry      : summary all states of one item, needs option -i
  summarizeEntries    : summary all states of all items
+ listValues          : list values with given criteria
+ deleteValues        : list values with given criteria
+
 ```
 
 Attention: deleteUnusedTables deletes tables without asking. 
@@ -50,6 +55,11 @@ Attention: deleteUnusedTables deletes tables without asking.
 
 
 ## Release Notes
+
+### V0.6 22.09.2020
+- new commands listValues and deleteValues
+- example:  php openhabsql.php -v 0 -o lt -f %temp% -t 30 listValues 
+  List Values %temp% with value < 0 last 30 days
 
 ### V0.5 25.06.2020
 - printout of min values

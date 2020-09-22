@@ -1,17 +1,18 @@
 <?php
   /*********************************************************
-   * Openhab SQl 0.5
+   * Openhab SQl 0.6
    * 
    * Mario Wagner
-   * 26.06.2020
+   * 22.09.2020
    * 
    * Evaluation of stored values from Openhab2 in MySQL
    */
   include("openhabsql.config.php");
+  include("dblib.php");
 
-  echo "\n  Openhab SQL 0.5\n  ===============\n  (c) 26.06.2020 by Mario Wagner\n\n";
+  echo "\n  Openhab SQL 0.6\n  ===============\n  (c) 22.09.2020 by Mario Wagner\n\n";
   
-  $opts = "s:t:i:f:";
+  $opts = "s:t:i:f:v:o:";
   $debug =false;
   $days=0;
   $id=0;
@@ -31,7 +32,11 @@
                 break;
       case 's': $sort=$val;
               break;
-  }
+      case 'v': $value=$val;
+              break;
+      case 'o': $operator=$val;
+              break;
+}
   }
 
   if (!array_key_exists(1,$argv)){
@@ -58,6 +63,24 @@
   
   if (array_search("listLastEntries",$argv)) {
     listLastEntries($database, $filter, $sort, $days,  $debug);
+  }
+
+  if (array_search("listValues",$argv)) {
+    if (is_numeric($value) && isset($operator)) {
+      listValues($database, $filter, $sort, $days, $value, $operator, $debug);
+    } else {
+      echo "please define value and operator\n\n";
+      echo "Example: php openhabsql.php -v 0 -o eq listValues\n\n";
+    }
+  }
+
+  if (array_search("deleteValues",$argv)) {
+    if (is_numeric($value) && isset($operator)) {
+      deleteValues($database, $filter, $sort, $days, $value, $operator, $debug);
+    } else {
+      echo "please define value and operator\n\n";
+      echo "Example: php openhabsql.php -v 0 -o eq deleteValues\n\n";
+    }
   }
 
   if (array_search("listUnusedTables",$argv)) {
@@ -103,6 +126,8 @@ function printHelp(){
   echo "-i <id>             : table id\n";
   echo "-f <filter>         : filters item names like 'level%temp'\n";
   echo "-s <column>         : sort table colums, 1=first col, -1=first col descending\n";
+  echo "-v <value>          : value we are searching for\n";
+  echo "-o <operator>       : 'lt', 'gt', 'eq' \n";
   echo "\n";
   echo "Commands:\n";
   echo "listTables          : list of all tables with id and name\n";
@@ -111,6 +136,8 @@ function printHelp(){
   echo "deleteUnusedTables  : removes unused tables, needs option -t\n";
   echo "summarizeEntry      : summary all states of one item, needs option -i\n";
   echo "summarizeEntries    : summary all states of all items\n";
+  echo "listValues          : list values with given criteria\n";
+  echo "deleteValues        : list values with given criteria\n";
   echo "\n";
   echo "Attention: deleteUnusedTables deletes tables without asking. \n";
   echo "           Be careful and make a mysqldump in advance!\n";
@@ -178,6 +205,88 @@ function summarizeEntry($database, $id, $csv, $sort, $days, $debug){
   } else {
     printTable($header, $content, $sort);
   }
+}
+
+function listValues($database, $filter, $sort, $days, $value, $operator, $debug){
+  switch ($operator) {
+    case 'lt': 
+      $oper="<";
+      break;
+    case 'gt': 
+      $oper=">";
+      break;
+    case 'eq': 
+      $oper="=";
+      break;
+    default: 
+      echo "Wrong operator $operator!!\n\n";
+      printHelp();
+      exit;
+  }
+  echo "List Values $filter with value $oper $value last $days days\n";
+  $db=connDB($database, $debug);
+  if(!$tables=getTables($db, $filter, $debug)){
+    echo "no tables with '$filter' found\n";
+    exit;
+  };
+
+  $header['titles']=array("ID", "Name", "Date", "Value");
+  $header['mask']=array("%5.5s ","%-20.20s ","%-20.20s ","%-10.10s ");
+  $content['mask']=array("%5.5s ","%-20.20s ","%-20.20s ","%10.8s ");
+
+  $i=0;
+
+  foreach ($tables as $id=>$name){
+    $values[$id]=getValues($db, "Item".$id, "AND Value".$oper."$value", $days, $debug);
+    foreach ($values[$id] as $date=>$value){
+      $i++;
+      $content['data'][$id.".".$i]=array($id, $name, $date, $value);
+    }
+  }
+
+  printTable($header, $content, $sort);
+  
+}
+
+function deleteValues($database, $filter, $sort, $days, $value, $operator, $debug){
+  listValues($database, $filter, $sort, $days, $value, $operator, $debug);
+
+  switch ($operator) {
+    case 'lt': 
+      $oper="<";
+      break;
+    case 'gt': 
+      $oper=">";
+      break;
+    case 'eq': 
+      $oper="=";
+      break;
+    default: 
+      echo "Wrong operator $operator!!\n\n";
+      printHelp();
+      exit;
+  }
+
+  $answer=readline("\nAre you sure? (y/n)");
+  if ($answer != "y"){exit;};
+  echo "\ndeleting...\n";
+
+  $db=connDB($database, $debug);
+  if(!$tables=getTables($db, $filter, $debug)){
+    echo "no tables with '$filter' found\n";
+    exit;
+  };
+ 
+  $i=0;
+  foreach ($tables as $id=>$name){
+    $values[$id]=getValues($db, "Item".$id, "where Value".$oper."$value", $days, $debug);
+    foreach ($values[$id] as $date=>$value){
+      echo "$id, $date, $value\n";
+        removeData($db, $id, $date, $debug);
+    }
+  }
+  echo "\n $i entries deleted\n\n";
+
 }
 
 function listLastEntries($database, $filter, $sort, $days, $debug){
@@ -350,20 +459,6 @@ function deleteUnusedTables($database, $filter, $days, $csv, $sort, $debug){
 }
 
 
-function connDB($database, $debug){
-  if ($debug) { echo "*connDB:: Connect to Database .. "; };
-  $db=new mysqli($database['host'], $database['username'], $database['password'], $database['database']);
-  if (!$db) { 
-    die(' connection failed: ' . mysqli_connect_error()); 
-  }
-  else { 
-    if ($debug) {
-      echo "ok\n";
-    };
-    return $db;
-  };
-}
-
 function getTables($db, $filter, $debug){
   $query = "SELECT * from Items where ItemName like '$filter'";
   $tables=array();
@@ -386,6 +481,8 @@ function getValues($db, $table, $dbopts, $days, $debug){
   if ($days>0) {
     $time=new DateTime('-'.$days.' day');
     $query = $query." WHERE Time>'".$time->format("Y-m-d H:i:s")."'";
+  } else {
+    $dbopts = str_replace('AND','WHERE',$dbopts);
   }
   $query=$query." $dbopts";
   if ($debug) { echo "*getValues:: get values $query .. \n"; }
@@ -416,6 +513,14 @@ function removeTable($db, $id, $debug){
   }
 }
 
+function removeData($db, $id, $date, $debug){
+  $query = "DELETE FROM Item".$id." WHERE Time='$date'";
+  if ($debug) {echo "*removeData:: $query .. ";};
+  if ($result = mysqli_query($db, $query)) {
+    if ($debug) { echo "ok\n"; };
+  }
+}
+
 function printCSV($header, $content){
   echo "\n";
   echo implode(",", $header['titles'])."\n";
@@ -428,19 +533,21 @@ function printCSV($header, $content){
 function printTable($header, $content, $sort=1){
   // print table headers
   echo "\n";
-  printf("  "."%7.7s","------");
-  foreach($header['titles'] as $key=>$title){
-    printf("  ".$header['mask'][$key],"-------------------------------------------------------");
-  }
-  echo "\n";
-  $i=0;
-  printf("  "."%7.7s","       |");
-  foreach($header['titles'] as $key=>$title){
-    $max[$i]=mmax($content['data'], $i);
-    $min[$i]=mmin($content['data'], $i);
-    printf("| ".$header['mask'][$key],$title);
-    $i++;
-  }
+  if (isset($content['data'])){
+    printf("  "."%7.7s","------");
+    foreach($header['titles'] as $key=>$title){
+      printf("  ".$header['mask'][$key],"-------------------------------------------------------");
+    }
+    echo "\n";
+    $i=0;
+    printf("  "."%7.7s","       |");
+    foreach($header['titles'] as $key=>$title){
+      $max[$i]=mmax($content['data'], $i);
+      $min[$i]=mmin($content['data'], $i);
+      printf("| ".$header['mask'][$key],$title);
+      $i++;
+    }
+   
   echo "|\n";
   printf("  "."%7.7s","------");
   foreach($header['titles'] as $key=>$title){
@@ -495,32 +602,35 @@ function printTable($header, $content, $sort=1){
     }
     printf("| ".$content['mask'][$i], $value);
     $i++;
-  }
-  echo "|\n";
- 
-  // print max
-  $i=0;
-  printf("  "."%7.7s","  MAX ");
-  foreach($max as $key=>$value){
-    if (is_numeric($value)){
-      if ($max[$i] > 1000){
-        $value=number_format($value,0,".","'");
-      } elseif (is_integer($value)) {
-        $value=number_format($value,0,".","'");
-      } else {
-        $value=number_format($value,6,".","'");
-      }
     }
-    printf("| ".$content['mask'][$i], $value);
-    $i++;
-  }
-  echo "|\n";
-  printf("  "."%7.7s","------");
+    echo "|\n";
+ 
+    // print max
+    $i=0;
+    printf("  "."%7.7s","  MAX ");
+    foreach($max as $key=>$value){
+      if (is_numeric($value)){
+        if ($max[$i] > 1000){
+          $value=number_format($value,0,".","'");
+        } elseif (is_integer($value)) {
+          $value=number_format($value,0,".","'");
+        } else {
+          $value=number_format($value,6,".","'");
+        }
+      }
+      printf("| ".$content['mask'][$i], $value);
+      $i++;
+    }
+    echo "|\n";
+    printf("  "."%7.7s","------");
 
-  foreach($header['titles'] as $key=>$title){
-    printf("  ".$header['mask'][$key],"-------------------------------------------------------");
+    foreach($header['titles'] as $key=>$title){
+      printf("  ".$header['mask'][$key],"-------------------------------------------------------");
+    }
+    echo "\n";
+  } else {
+    echo "no data found \n";
   }
-  echo "\n";
 }
 
 function mmax($array, $index){
